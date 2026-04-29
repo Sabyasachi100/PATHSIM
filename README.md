@@ -1,5 +1,7 @@
 # PATHSIM: Multi-Algorithm Game AI 🤖
 
+**🔴 Play the Live Demo:** [https://pathsim.onrender.com](https://pathsim.onrender.com)
+
 PATHSIM is an interactive, grid-based web game designed to visually demonstrate and compare the efficiency of different AI pathfinding algorithms. Play as the user trying to reach the goal while outsmarting an AI enemy that actively hunts you down using various mathematical strategies.
 
 ## ✨ Features
