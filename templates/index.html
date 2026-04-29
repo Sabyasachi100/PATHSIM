@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PATHSIM — AI Pathfinding Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="app">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-mark">A*</div>
+      <span class="logo-name">PATHSIM</span>
+      <span class="logo-sub">— AI vs Player</span>
+    </div>
+    <div class="top-right">
+      <button class="tb" onclick="resetGame()">↺ RESET</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div>
+      <div class="sec">Algorithm</div>
+      <div class="algo-list">
+        <div class="acard sel mode-btn" id="mode-basic" onclick="setMode('basic')">
+          <div class="aicon">⚡</div>
+          <div class="ainfo"><div class="aname">Greedy Best-First</div><div class="ahint">Fast but gets stuck</div></div>
+          <span class="atag t-fast">BASIC</span>
+        </div>
+        <div class="acard mode-btn" id="mode-bfs" onclick="setMode('bfs')">
+          <div class="aicon">⊗</div>
+          <div class="ainfo"><div class="aname">Breadth-First</div><div class="ahint">Shortest path</div></div>
+          <span class="atag t-opt">OPTIMAL</span>
+        </div>
+        <div class="acard mode-btn" id="mode-smart" onclick="setMode('smart')">
+          <div class="aicon">◎</div>
+          <div class="ainfo"><div class="aname">Dijkstra</div><div class="ahint">Avoids traps/mud</div></div>
+          <span class="atag t-wt">WEIGHTED</span>
+        </div>
+        <div class="acard mode-btn" id="mode-strategy" onclick="setMode('strategy')">
+          <div class="aicon">★</div>
+          <div class="ainfo"><div class="aname">Strategy Mode</div><div class="ahint">Dual path visualize</div></div>
+          <span class="atag t-star">ELITE</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec">Live Stats</div>
+      <div class="sg">
+        <div class="sbox"><div class="sv" id="score-val">0</div><div class="sl">SCORE</div></div>
+        <div class="sbox"><div class="sv" id="moves-val">0</div><div class="sl">MOVES</div></div>
+        <div class="sbox"><div class="sv gd" id="res-high">0</div><div class="sl">HIGH SCORE</div></div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-height: 120px; display: flex; flex-direction: column;">
+      <div class="sec">Match History</div>
+      <div id="history-list" class="history-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+          <!-- History items -->
+      </div>
+    </div>
+
+    <div>
+      <div class="sec">Legend</div>
+      <div class="lg">
+        <div class="lr"><div class="lsw lp"></div>Player</div>
+        <div class="lr"><div class="lsw lg2"></div>Goal</div>
+        <div class="lr"><div class="lsw le"></div>Enemy</div>
+        <div class="lr"><div class="lsw lc"></div>Coin</div>
+        <div class="lr"><div class="lsw lw"></div>Wall</div>
+        <div class="lr"><div class="lsw lm"></div>Mud ×4</div>
+        <div class="lr"><div class="lsw lt"></div>Trap ×10</div>
+        <div class="lr"><div class="lsw lph"></div>AI Path</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <main class="main" id="mainArea">
+    <div class="hud">
+      <div class="hudtag" id="hudAlgo">MODE: GREEDY</div>
+    </div>
+    <div class="board-wrap">
+      <div class="cr tl"></div><div class="cr tr"></div>
+      <div class="cr bl"></div><div class="cr br"></div>
+      <div id="game-grid"></div>
+    </div>
+
+    <!-- Strategy overlay (restored) -->
+    <div class="info-overlay" id="strategy-info" style="display: none; position: absolute; bottom: 30px; right: 30px; flex-direction: column; gap: 10px; z-index: 50;">
+        <div class="info-card bfs" style="background: rgba(2,4,14,0.8); border: 1px solid rgba(168,85,247,0.3); padding: 10px 15px; border-radius: 8px; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 10px;">
+            <div class="indicator" style="width: 10px; height: 10px; border-radius: 50%; background: #c084fc; box-shadow: 0 0 8px #c084fc;"></div>
+            <div>
+                <h4 style="font-size: 12px; color: #e2e8f0; margin-bottom: 2px;">Shortest Path (BFS)</h4>
+                <p id="bfs-dist" style="font-size: 10px; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">Distance: --</p>
+            </div>
+        </div>
+        <div class="info-card dp" style="background: rgba(2,4,14,0.8); border: 1px solid rgba(245,158,11,0.3); padding: 10px 15px; border-radius: 8px; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 10px;">
+            <div class="indicator" style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 8px #f59e0b;"></div>
+            <div>
+                <h4 style="font-size: 12px; color: #e2e8f0; margin-bottom: 2px;">Best Score Path (DP)</h4>
+                <p id="dp-coins" style="font-size: 10px; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">Coins: --</p>
+            </div>
+        </div>
+    </div>
+  </main>
+
+  <!-- BOTTOM BAR -->
+  <footer class="bottombar">
+    <div class="status">
+      <div class="led ready" id="led"></div>
+      <span class="stxt" id="stxt">READY — USE WASD TO MOVE</span>
+    </div>
+    <div class="apill" id="apill">GREEDY BEST-FIRST</div>
+    <div class="hints">
+      <div class="hi"><span class="kbd">WASD</span>Move</div>
+      <div class="hi"><span class="kbd">R</span>Reset</div>
+    </div>
+  </footer>
+</div>
+
+<!-- Instructions Modal -->
+<div id="instructions-modal" class="modal-overlay" style="display: flex; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: rgba(2,4,14,0.9); padding: 40px; border-radius: 20px; border: 1px solid rgba(168,85,247,0.3); text-align: left; max-width: 500px; color: #e2e8f0;">
+        <h2 style="margin-bottom: 15px; font-size: 28px; color: #fff;">Welcome to PATHSIM AI</h2>
+        <p style="margin-bottom: 20px; color: #94a3b8; font-size: 15px; line-height: 1.5;">Navigate to the Goal while avoiding the AI Enemy. Choose different algorithms to see how the AI pathfinding changes.</p>
+        <ul style="margin-bottom: 25px; padding-left: 20px; color: #94a3b8; font-size: 14px; line-height: 1.6;">
+            <li><strong style="color: #c084fc;">Shortest Path (BFS):</strong> AI ignores mud and traps to take the most direct route.</li>
+            <li><strong style="color: #f59e0b;">Smart AI (Dijkstra):</strong> AI calculates weighted paths to avoid Mud (weight 4) and Traps (weight 10).</li>
+            <li><strong style="color: #34d399;">Strategy Mode:</strong> Compares BFS and Dynamic Programming (highest coin score) paths.</li>
+        </ul>
+        <div style="text-align: center;">
+            <button class="tb run" onclick="closeModal()" style="font-size: 16px; padding: 12px 32px;">Start Game</button>
+        </div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="results-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: rgba(2,4,14,0.9); padding: 40px; border-radius: 20px; border: 1px solid rgba(168,85,247,0.3); text-align: center; color: #fff;">
+        <h2 id="result-title" style="margin-bottom: 20px; font-size: 32px;">🏆 You Reached the Goal!</h2>
+        
+        <div style="display: flex; gap: 20px; justify-content: center; margin-bottom: 30px;">
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; min-width: 100px;">
+                <div style="font-size: 10px; color: #94a3b8; letter-spacing: 2px;">SCORE</div>
+                <div id="res-score" style="font-size: 28px; font-weight: bold; color: #f59e0b;">0</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; min-width: 100px;">
+                <div style="font-size: 10px; color: #94a3b8; letter-spacing: 2px;">MOVES</div>
+                <div id="res-moves" style="font-size: 28px; font-weight: bold; color: #34d399;">0</div>
+            </div>
+        </div>
+
+        <button class="tb run" onclick="resetGame(); closeResults();" style="font-size: 16px; padding: 12px 32px;">Play Again</button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>
